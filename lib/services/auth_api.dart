@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+
 abstract class Authapi{
   getFirebaseAuth();
   Future<String> CurrentUserId();
@@ -6,4 +8,7 @@ abstract class Authapi{
   Future<String> CreateUserWithEmailPassword({String password, String email});
   Future<void> SendEmailVerification();
   Future<bool> IsEmailVerified();
+  //Future<UserCredential> SignInWithGoogle();
 }
+
+

@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:async';
 import '../classes/validators.dart';
 import '../services/auth_api.dart';
@@ -9,6 +11,7 @@ class LoginBloc with Validator {
   String _password;
   bool _emailValid;
   bool _passwordValid;
+
   final StreamController<String> _emailController =
       StreamController<String>.broadcast();
   Sink<String> get emailChanged => _emailController.sink;
@@ -37,8 +40,16 @@ class LoginBloc with Validator {
       StreamController<String>.broadcast();
   Sink<String> get loginOrCreateChanged => _loginOrCreateController.sink;
   Stream<String> get loginOrCreate => _loginOrCreateController.stream;
+
+  final StreamController<String> _googleLoginController =
+  StreamController<String>.broadcast();
+  Sink<String> get googleLoginCreateChanged => _googleLoginController.sink;
+  Stream<String> get googleLoginOrCreate => _googleLoginController.stream;
+
+
   LoginBloc(this.authapi) {
     _startListenersIfEmailPasswordValid();
+    _googleLoginEnable();
   }
   void dispose() {
     _passwordController.close();
@@ -46,6 +57,7 @@ class LoginBloc with Validator {
     _loginOrCreateController.close();
     _enableLoginCreateButtonController.close();
     _loginOrCreateButtonController.close();
+    _googleLoginController.close();
   }
 
   void _startListenersIfEmailPasswordValid() {
@@ -67,9 +79,32 @@ class LoginBloc with Validator {
       _passwordValid = false;
       _updateEnableLoginCreateButtonStream();
     });
-    loginOrCreate.listen((action) {
-      action == 'Login' ? _login() : _createAcount();
-    });
+
+    loginOrCreate.listen(
+      (action) {
+        // action == 'Login' ? _login() : _createAcount();
+        switch (action) {
+          case 'Login':
+            {
+              _login();
+            }
+            break;
+          case 'Create Account':
+            {
+              _createAcount();
+            }
+            break;
+          // case 'GoogleLogin':
+          //   {
+          //     _googleLogin();
+          //   }
+          //   break;
+          default:{
+            _login();
+          }break;
+        }
+      },
+    );
   }
 
   void _updateEnableLoginCreateButtonStream() {
@@ -109,12 +144,44 @@ class LoginBloc with Validator {
           print('login error:$error');
           _result = error;
         });
-      }).catchError((error) async{
+      }).catchError((error) async {
         print('creating user error:$error');
       });
       return _result;
-    }else{
+    } else {
       return 'error creating user';
     }
+  }
+
+  Future<UserCredential> _googleLogin() async {
+    enableLoginCreateButtonChanged.add(true);
+
+    //String _result = '';
+    if (_emailValid == true && _passwordValid == true) {
+    //Trigger the authentication flow
+    final GoogleSignInAccount googleUser = await GoogleSignIn().signIn();
+
+    // Obtain the auth details from the request
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+    // Create a new credential
+    final GoogleAuthCredential credential = GoogleAuthProvider.credential(
+    accessToken: googleAuth.accessToken,
+    idToken: googleAuth.idToken,
+    );
+
+    // Once signed in, return the UserCredential
+    return await FirebaseAuth.instance.signInWithCredential(credential);
+    };
+    }
+
+
+  void _googleLoginEnable() {
+    _GlogIn();
+    googleLoginOrCreate.listen((action) {action == 'GoogleLogin'?_googleLogin():_createAcount(); });
+  }
+
+  void _GlogIn() {
+    googleLoginCreateChanged.add('GoogleLogin');
   }
 }
